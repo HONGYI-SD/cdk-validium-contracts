@@ -84,6 +84,7 @@ async function main() {
         maticTokenAddress,
         setupEmptyCommittee,
         committeeTimelock,
+        l1DomiconCommitmentAddress,
     } = deployParameters;
 
     // Load provider
@@ -422,6 +423,7 @@ async function main() {
                             verifierContract.address,
                             PolygonZkEVMBridgeContract.address,
                             cdkDataCommitteeContract.address,
+                            l1DomiconCommitmentAddress,
                             chainID,
                             forkID,
                         ],

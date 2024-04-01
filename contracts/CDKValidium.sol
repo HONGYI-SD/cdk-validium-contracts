@@ -9,6 +9,7 @@ import "./interfaces/IPolygonZkEVMBridge.sol";
 import "./lib/EmergencyManager.sol";
 import "./interfaces/ICDKValidiumErrors.sol";
 import "./interfaces/ICDKDataCommittee.sol";
+import "./interfaces/IL1DomiconCommitment.sol";
 
 /**
  * Contract responsible for managing the states and the updates of L2 network.
@@ -160,6 +161,9 @@ contract CDKValidium is
     // CDK Data Committee Address
     ICDKDataCommittee public immutable dataCommitteeAddress;
 
+    // Domicon Commitment Contract Address
+    IL1DomiconCommitment public immutable l1DomiconCommitment;
+
     // L2 chain identifier
     uint64 public immutable chainID;
 
@@ -251,6 +255,11 @@ contract CDKValidium is
      */
     event SequenceBatches(uint64 indexed numBatch);
 
+    /**
+     * @dev Emitted when the trusted sequencer sends a new datacommitment
+     */
+    event SendDACommitment(uint256 index,uint256 length,uint256 price,address indexed broadcaster,address indexed user,bytes sign,bytes commitment);
+    
     /**
      * @dev Emitted when a batch is forced
      */
@@ -386,6 +395,7 @@ contract CDKValidium is
         IVerifierRollup _rollupVerifier,
         IPolygonZkEVMBridge _bridgeAddress,
         ICDKDataCommittee _dataCommitteeAddress,
+        IL1DomiconCommitment _l1DomiconCommitmentAddress,
         uint64 _chainID,
         uint64 _forkID
     ) {
@@ -393,7 +403,8 @@ contract CDKValidium is
         matic = _matic;
         rollupVerifier = _rollupVerifier;
         bridgeAddress = _bridgeAddress;
-        dataCommitteeAddress = _dataCommitteeAddress;   
+        dataCommitteeAddress = _dataCommitteeAddress;  
+        l1DomiconCommitment = _l1DomiconCommitmentAddress; 
         chainID = _chainID;
         forkID = _forkID;
     }
@@ -477,6 +488,32 @@ contract CDKValidium is
             revert ForceBatchNotAllowed();
         }
         _;
+    }
+
+    /////////////////////////////////////
+    // Submit data commitment to domicon
+    ////////////////////////////////////
+    /**
+     * @notice Allows a sequencer to send data commmitment to domicon
+     * @param index Struct array which holds the necessary data to append new batches to the sequence
+     * @param length Address that will receive the fees from L2
+     * @param price Byte array containing the signatures and all the addresses of the committee in ascending order
+     * @param user Address that will receive the fees from L2
+     * @param sign Address that will receive the fees from L2
+     * @param commitment Address that will receive the fees from L2
+     * [signature 0, ..., signature requiredAmountOfSignatures -1, address 0, ... address N]
+     * note that each ECDSA signatures are used, therefore each one must be 65 bytes
+     */
+    function submitCommitment(
+        uint64 index,
+        uint64 length,
+        uint64 price,
+        address user,
+        bytes calldata sign,
+        bytes calldata commitment
+    ) external ifNotEmergencyState onlyTrustedSequencer {
+        l1DomiconCommitment.SubmitCommitment(index, length, price, user, sign, commitment);
+        emit SendDACommitment(index, length, price, msg.sender, user, sign, commitment);
     }
 
     /////////////////////////////////////
